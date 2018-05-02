@@ -1,0 +1,25 @@
+{
+  "authors": [
+    "Patrick Spek <p.spek@tyil.work>"
+  ],
+  "depends": [
+    "File::Temp",
+    "File::Which"
+  ],
+  "description": "Edit a file and create a .patch file from the changes",
+  "license": "AGPL-3.0",
+  "meta-version": 0,
+  "name": "App::Mkpatch",
+  "perl": "6.c",
+  "provides": {
+    "mkpatch": "bin/mkpatch"
+  },
+  "resources": [
+    
+  ],
+  "tags": [
+    "unix",
+    "util"
+  ],
+  "version": "0.1.0"
+}

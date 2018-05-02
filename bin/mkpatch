@@ -1,0 +1,89 @@
+#! /usr/bin/env perl6
+
+# mkpatch - Edit a file and create a .patch file from the changes
+# Copyright (C) 2018 - Patrick Spek <p.spek@tyil.work>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+
+use v6.c;
+
+use File::Temp;
+use File::Which;
+
+#| Edit a file and create a .patch file from the changes.
+sub MAIN(
+	#| The file to write a patch for.
+	Str:D $file,
+
+	#| Additional files to write patches for, processed in order.
+	*@other-files,
+
+	#| The output directory to write to. Defaults to the current working
+	#| directory.
+	Str:D :$output = $*CWD,
+
+	#| Whether to overwrite an existing patch file. Defaults to False.
+	Bool:D :c(:$clobber) = False,
+) {
+	if (!which("diff")) {
+		die "The diff utility is required to create the patch files.";
+	}
+
+	my @files = « $file {@other-files} »;
+
+	for @files -> $file {
+		next unless $file.IO.f;
+
+		my Str $tempfile = tempfile[0];
+		my Str $editor = pick-editor;
+		my Str $output-file = $output.IO.add($file.IO.basename).extension("patch", parts => 0).absolute;
+
+		if ($output-file.IO.e && !$clobber) {
+			note "Output file $output-file already exists. Use -c to clobber.";
+			next;
+		}
+
+		copy($file, $tempfile);
+		run « $editor "$tempfile" »;
+
+		my Proc $diff = run « diff -Naur "$file" "$tempfile" », :out;
+
+		$output-file.IO.spurt: $diff.out.slurp;
+	}
+}
+
+#| Pick a suitable editor to use. Environment variable EDITOR will be checked
+#| first, as this is usually the user's preferred editor. Afterwards, a list of
+#| editors will be tried, in no particular order.
+sub pick-editor(
+	--> Str
+) {
+	my @options = «
+		%*ENV<EDITOR>
+		vim
+		emacs
+		vi
+		nano
+		ed
+	»;
+
+	for @options -> $option {
+		return $option if which($option);
+	}
+
+	die "No suitable editor found. (\$EDITOR=$*ENV<EDITOR>)";
+}
+
+# vim: ft=perl6 noet
